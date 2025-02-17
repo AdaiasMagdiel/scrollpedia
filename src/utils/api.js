@@ -1,4 +1,4 @@
-export async function fetchPopular(lang) {
+export async function fetchPopular(lang, total) {
 	const fallbackLang = "en";
 	let formattedDate = new Date().toISOString().split("T")[0].replace(/-/g, "/");
 
@@ -38,17 +38,19 @@ export async function fetchPopular(lang) {
 		return { error: "Unable to fetch wikipedia data." };
 	}
 
-	return {
-		id: data.tid,
-		title: data.titles.normalized,
-		image: data.originalimage.source,
-		content:
-			data.extract.length > 150
-				? `${data.extract.slice(0, 150)}...`
-				: data.extract,
-		url: data.content_urls.desktop.page,
-		lang: data.lang || "en",
-	};
+	const articles = data.mostread.articles.map((res) => {
+		return {
+			id: res.tid,
+			title: res.titles.normalized,
+			image: res?.originalimage?.source || res?.thumbnail?.source || null,
+			content:
+				res.extract.length > 150
+					? `${res.extract.slice(0, 150)}...`
+					: res.extract,
+			url: res.content_urls.desktop.page,
+			lang: res.lang || "en",
+		};
+	});
 }
 
 export async function fetchRandom(lang = "en", limit = 10) {
@@ -66,7 +68,7 @@ export async function fetchRandom(lang = "en", limit = 10) {
 			return {
 				id: data.wikibase_item || data.tid,
 				title: data.title,
-				image: data.originalimage?.source || null,
+				image: data.originalimage?.source || data?.thumbnail?.source || null,
 				content:
 					data.extract.length > 150
 						? `${data.extract.slice(0, 150)}...`
