@@ -40,7 +40,7 @@ export async function fetchPopular(lang, total) {
 
 	const articles = data.mostread.articles.map((res) => {
 		return {
-			id: res.tid,
+			id: res.pageid,
 			title: res.titles.normalized,
 			image: res?.originalimage?.source || res?.thumbnail?.source || null,
 			content:
@@ -49,6 +49,7 @@ export async function fetchPopular(lang, total) {
 					: res.extract,
 			url: res.content_urls.desktop.page,
 			lang: res.lang || "en",
+			description: res.description || "No informations",
 		};
 	});
 }
@@ -66,7 +67,7 @@ export async function fetchRandom(lang = "en", limit = 10) {
 			const data = await summaryResponse.json();
 
 			return {
-				id: data.wikibase_item || data.tid,
+				id: data.pageid,
 				title: data.title,
 				image: data.originalimage?.source || data?.thumbnail?.source || null,
 				content:
@@ -75,6 +76,40 @@ export async function fetchRandom(lang = "en", limit = 10) {
 						: data.extract,
 				url: data.content_urls.desktop.page,
 				lang: data.lang || "en",
+				description: data.description || "No informations",
+			};
+		}),
+	);
+
+	return articles;
+}
+
+export async function fetchCategory(lang, limit, category) {
+	const url = `https://api.wikimedia.org/core/v1/wikipedia/${lang}/search/page?q=${category}&limit=${limit}`;
+	console.log("fetchCategory 1", url);
+	const response = await fetch(url);
+	const data = await response.json();
+	const titles = data.pages.map((article) => article.key);
+
+	const articles = await Promise.all(
+		titles.map(async (title, index) => {
+			const summaryUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${title}`;
+			console.log(`  fetchCategory 1.${index + 1}`, summaryUrl);
+
+			const summaryResponse = await fetch(summaryUrl);
+			const data = await summaryResponse.json();
+
+			return {
+				id: data.pageid,
+				title: data.title,
+				image: data.originalimage?.source || data?.thumbnail?.source || null,
+				content:
+					data.extract.length > 150
+						? `${data.extract.slice(0, 150)}...`
+						: data.extract,
+				url: data.content_urls.desktop.page,
+				lang: data.lang || "en",
+				description: data.description || "No informations",
 			};
 		}),
 	);
