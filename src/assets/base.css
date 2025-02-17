@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+.post-gradient {
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.5) 60%,
+      transparent 100%);
+}
+
+html,
+body,
+.feed {
+  scroll-snap-type: y mandatory;
+}
+
+.feed__post {
+  scroll-snap-align: start;
+}
