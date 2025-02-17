@@ -5,68 +5,32 @@
 </template>
 
 <script setup>
-import { reactive, onMounted, inject, watch } from "vue";
+import { reactive, onMounted, onUnmounted, inject, watch } from "vue";
 import Post from "./Post.vue";
+import { fetchRandom } from "@/utils/api";
 
 const posts = reactive([]);
 const state = inject('langState');
+let loading = false
 
-async function fetchFeed(lang) {
-	const fallbackLang = "en";
-	let formattedDate = new Date().toISOString().split("T")[0].replace(/-/g, "/");
-
-	function getPreviousDate(dateString) {
-		const date = new Date(dateString);
-		date.setDate(date.getDate() - 1);
-		return date.toISOString().split("T")[0].replace(/-/g, "/");
+function handleScroll() {
+	if (
+		window.innerHeight + window.scrollY >=
+		document.body.offsetHeight - window.innerHeight * 3 && !loading
+	) {
+		loading = true;
+		populate(state.currentLang);
 	}
-
-	async function tryFetch(url) {
-		try {
-			const response = await fetch(url);
-			if (!response.ok) throw new Error("Erro na resposta do servidor");
-			const data = await response.json();
-			if (!data || !data.mostread) throw new Error("Dados inválidos ou ausentes");
-			return data;
-		} catch (error) {
-			return null;
-		}
-	}
-
-	let url = `https://api.wikimedia.org/feed/v1/wikipedia/${lang}/featured/${formattedDate}`;
-	let data = await tryFetch(url);
-
-	if (!data) {
-		formattedDate = getPreviousDate(formattedDate);
-		url = `https://api.wikimedia.org/feed/v1/wikipedia/${lang}/featured/${formattedDate}`;
-		data = await tryFetch(url);
-	}
-
-	if (!data) {
-		url = `https://api.wikimedia.org/feed/v1/wikipedia/${fallbackLang}/featured/${formattedDate}`;
-		data = await tryFetch(url);
-	}
-
-	return data || { error: "Não foi possível obter os dados" };
 }
 
 async function populate(lang) {
-	const data = await fetchFeed(lang);
-	data.mostread.articles.forEach((res) => {
-		if (res?.originalimage?.source) {
-			posts.push({
-				id: res.tid,
-				image: res.originalimage.source,
-				title: res.titles.normalized,
-				content:
-					res.extract.length > 150
-						? `${res.extract.slice(0, 150)}...`
-						: res.extract,
-			});
-		}
-	});
+	const data = await fetchRandom(lang, 10);
+	data.forEach(res => {
+		if (res.image !== null && res.lang === state.currentLang)
+			posts.push(res);
+	})
+	loading = false;
 }
-
 
 watch(() => state.currentLang, (newLang) => {
 	posts.length = 0;
@@ -75,6 +39,11 @@ watch(() => state.currentLang, (newLang) => {
 
 onMounted(async () => {
 	populate(state.currentLang);
+	window.addEventListener("scroll", handleScroll);
+});
+
+onUnmounted(() => {
+	window.removeEventListener("scroll", handleScroll);
 });
 
 </script>
